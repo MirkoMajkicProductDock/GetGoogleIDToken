@@ -1,0 +1,39 @@
+name: 'Get Google ID Token'
+description: 'Use private key file of GCP service account to get ID token of that account'
+inputs:
+  private-key-file-content: # id of input
+    description: 'Pass JSON key file content'
+    required: true
+  scope:
+    description: 'Pass scope that you need access to'
+    required: true
+outputs:
+  id-token:
+    description: "ID Token generated for given service account and scope"
+    value: ${{ steps.get-id-token.outputs.id-token }}
+runs:
+  using: "composite"
+  steps:
+    - name: Get ID Token
+      id: get-id-token
+      shell: bash
+      env:
+        INPUT_KEY_FILE_CONTENT: ${{ inputs.private-key-file-content }}
+        INPUT_SCOPE: ${{ inputs.scope }}
+      run: |
+        PRIVATE_KEY=$(grep -A 100 'private_key' <<< $INPUT_KEY_FILE_CONTENT | sed -n 's/.*"private_key": "\(.*\)".*/\1/p' | sed 's/\\n/\n/g')
+        CLIENT_EMAIL=$(grep 'client_email' <<< $INPUT_KEY_FILE_CONTENT | sed -n 's/.*"client_email": "\(.*\)",/\1/p' | sed 's/\"//g')
+        HEADER='{"alg": "RS256","typ": "JWT"}'
+        CLAIMS='{"iss": "'"$CLIENT_EMAIL"'","aud": "https://oauth2.googleapis.com/token","scope": "'"$INPUT_SCOPE"'","exp": '$(($(date +%s) + 3600))',"iat": '$(date +%s)'}'
+        BASE64_HEADER=$(echo -n "$HEADER" | openssl base64 -e | tr '+/' '-_' | tr -d '=')
+        BASE64_CLAIMS=$(echo -n "$CLAIMS" | openssl base64 -e | tr '+/' '-_' | tr -d '=')
+        JWT_HEADER_CLAIMS="${BASE64_HEADER}.${BASE64_CLAIMS}"
+        SIGNATURE=$(echo -n "$JWT_HEADER_CLAIMS" | openssl dgst -sha256 -sign <(echo -e "$PRIVATE_KEY") | openssl base64 -e | tr '+/' '-_' | tr -d '=')
+        JWT="${JWT_HEADER_CLAIMS}.${SIGNATURE}"
+        RESPONSE=$(curl -s -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${JWT}" "https://oauth2.googleapis.com/token")
+        ID_TOKEN=$(echo $RESPONSE | grep -o '"id_token":"[^"]*"' | sed 's/"id_token":"\(.*\)"/\1/')
+        if [ -z "$ID_TOKEN" ]; then
+          echo "Failed to extract id_token from response."
+          exit 1
+        fi
+        echo "id_token=$ID_TOKEN"  >> $GITHUB_OUTPUT
