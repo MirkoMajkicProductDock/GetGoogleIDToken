@@ -36,8 +36,8 @@ runs:
         RESPONSE=$(curl -s -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${JWT}" "https://oauth2.googleapis.com/token")
         ID_TOKEN=$(echo $RESPONSE | grep -o '"id_token":"[^"]*"' | sed 's/"id_token":"\(.*\)"/\1/')
         if [ -z "$ID_TOKEN" ]; then
-          echo "Failed to extract id_token from response."
+          echo "Failed to extract ID token from response."
           exit 1
         fi
-        echo "IN REMOTE ACTION LOG : ID token is $ID_TOKEN"
+        echo "ID token received"
         echo "id-token=$(echo $ID_TOKEN)" >> $GITHUB_OUTPUT
