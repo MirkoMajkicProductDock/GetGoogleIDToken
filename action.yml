@@ -11,9 +11,9 @@ outputs:
   id-token:
     description: "ID Token generated for given service account and scope"
     value: ${{ steps.get-id-token.outputs.id-token }}
-# branding:
-#   icon: 'user'
-#   color: 'blue'
+branding:
+  icon: 'user'
+  color: 'blue'
 runs:
   using: "composite"
   steps:
