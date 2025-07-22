@@ -39,5 +39,5 @@ runs:
           echo "Failed to extract id_token from response."
           exit 1
         fi
-        echo "ID token is $ID_TOKEN"
+        echo "IN REMOTE ACTION LOG : ID token is $ID_TOKEN"
         echo "id_token=$(echo $ID_TOKEN)" >> $GITHUB_OUTPUT
